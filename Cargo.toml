@@ -1,0 +1,38 @@
+[package]
+name = "xenomit_client"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+async-channel = "2.5.0"
+async-task = "4.7.1"
+clap = { version = "4.6.7", features = ["derive"] }
+flate2 = "1"
+fontdb = "0.23"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "cookies"] }
+tokio = { version = "1.53.1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+url = "2.5.8"
+winit = "0.30.13"
+
+# ruffle
+ruffle_core = { git = "https://github.com/ruffle-rs/ruffle", features = ["jpegxr"] }
+ruffle_render = { git = "https://github.com/ruffle-rs/ruffle" }
+ruffle_render_wgpu = { git = "https://github.com/ruffle-rs/ruffle" }
+
+# xenomit
+xenomit_backpage = { path = "../xenomit-backpage" }
+md-5 = "0.11.0"
+
+# Use the sibling checkout while tracing the game startup event handoff.
+[patch."https://github.com/ruffle-rs/ruffle"]
+ruffle_core = { path = "../ruffle/core" }
+ruffle_render = { path = "../ruffle/render" }
+ruffle_render_wgpu = { path = "../ruffle/render/wgpu" }
+
+# Flash decodes some 4-byte sequences to code points above U+10FFFF.
+# `ruffle_wstr` debug-asserts that this cannot happen, so a debug run panics
+# while reading the preloader. Release Ruffle does not. Keep that behavior.
+[profile.dev.package.ruffle_wstr]
+debug-assertions = false
