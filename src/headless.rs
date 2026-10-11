@@ -23,16 +23,20 @@ pub async fn run_headless(
     };
     let mut executor = GameExecutor::new();
     let navigator = GameNavigator::new(&executor, &launch.network, launch.smoke_pool)?;
+    let bridge = launch.bridge;
+    let page_url = launch.network.page_url.clone();
     let player = PlayerBuilder::new()
         .with_renderer(NullRenderer::new(viewport))
         .with_audio(NullAudioBackend::new())
         .with_navigator(navigator)
-        .with_page_url(Some(launch.network.page_url.clone()))
+        .with_external_interface(Box::new(bridge.provider(Some(page_url.clone()))))
+        .with_page_url(Some(page_url))
         .with_autoplay(true)
         .with_max_execution_duration(Duration::from_secs(script_timeout))
         .with_quality(quality)
         .with_movie(launch.movie)
         .build();
+    bridge.spawn_pipe();
 
     let mut last_tick = Instant::now();
     let shutdown = tokio::signal::ctrl_c();
@@ -45,9 +49,13 @@ pub async fn run_headless(
         let delay = {
             let mut player = player.lock().expect("player lock");
             player.tick(FloatDuration::from_std(elapsed));
+            bridge.poll(&mut player);
             player.time_til_next_frame()
         };
         executor.run();
+        if bridge.close_requested() {
+            break;
+        }
         tokio::select! {
             _ = tokio::time::sleep(delay.clamp(Duration::from_millis(1), Duration::from_millis(16))) => {}
             _ = &mut shutdown => break,

@@ -81,10 +81,8 @@ fn try_patch(bytes: &[u8], cap: u32) -> Result<PatchOutcome, String> {
 
     let mut compressed = Vec::new();
     {
-        let mut encoder = flate2::write::ZlibEncoder::new(
-            &mut compressed,
-            flate2::Compression::default(),
-        );
+        let mut encoder =
+            flate2::write::ZlibEncoder::new(&mut compressed, flate2::Compression::default());
         use std::io::Write;
         encoder
             .write_all(&patched)
@@ -141,8 +139,7 @@ fn find_game_xml_blob(body: &[u8], tags_start: usize) -> Option<(usize, usize)> 
             if data_start + 4 > body.len() {
                 return None;
             }
-            len = u32::from_le_bytes(body[data_start..data_start + 4].try_into().unwrap())
-                as usize;
+            len = u32::from_le_bytes(body[data_start..data_start + 4].try_into().unwrap()) as usize;
             data_start += 4;
         }
         let data_end = data_start.checked_add(len)?;
@@ -259,10 +256,8 @@ mod tests {
 
         let mut compressed = Vec::new();
         {
-            let mut encoder = flate2::write::ZlibEncoder::new(
-                &mut compressed,
-                flate2::Compression::default(),
-            );
+            let mut encoder =
+                flate2::write::ZlibEncoder::new(&mut compressed, flate2::Compression::default());
             use std::io::Write;
             encoder.write_all(&body).unwrap();
             encoder.finish().unwrap();
@@ -308,7 +303,10 @@ mod tests {
         assert_eq!(outcome.old_hash, old_hash);
 
         let body = decompress(&outcome.bytes);
-        assert_eq!(body.len() + 8, u32::from_le_bytes(swf[4..8].try_into().unwrap()) as usize);
+        assert_eq!(
+            body.len() + 8,
+            u32::from_le_bytes(swf[4..8].try_into().unwrap()) as usize
+        );
 
         let tags_end = parse_tags(&body).unwrap();
         let (start, end) = find_game_xml_blob(&body, tags_end).unwrap();

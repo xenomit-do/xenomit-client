@@ -6,6 +6,7 @@ use xenomit_backpage::client::{BackpageClient, url_decode};
 use xenomit_backpage::launch;
 use xenomit_backpage::login::login_with_sid;
 
+use crate::bridge::Bridge;
 use crate::navigator::GameNetwork;
 
 /// Movie plus the network identity Ruffle needs to keep loading after the preloader.
@@ -16,6 +17,8 @@ pub struct PreparedLaunch {
     pub network: GameNetwork,
     /// Cap applied to the smoke pools in `main.swf` by the navigator.
     pub smoke_pool: Option<u32>,
+    /// Reflection bridge state; records whether the root movie was injected.
+    pub bridge: Bridge,
 }
 
 /// Fetch the preloader and the authenticated Flash contract, then the SWF.
@@ -29,6 +32,7 @@ pub async fn authenticate(
     display2d: &str,
     local_swf: Option<&str>,
     smoke_pool: Option<u32>,
+    bridge_enabled: bool,
 ) -> Result<PreparedLaunch, Box<dyn std::error::Error>> {
     let dosid = normalize_sid(dosid)?;
     let mut session = login_with_sid(domain, &dosid).await?;
@@ -48,12 +52,32 @@ pub async fn authenticate(
         "{}indexInternal.es?action=internalMapRevolution",
         session.instance()
     );
+    let bridge = Bridge::new(bridge_enabled);
     let bytes = match local_swf {
         Some(path) => tokio::fs::read(path).await?,
         None => {
             let client = BackpageClient::new(session.clone())?;
             launch::fetch_movie(&client, &movie_url).await?
         }
+    };
+    let bytes = if bridge_enabled {
+        match crate::swf_bridge::inject(&bytes) {
+            Ok(patched) => {
+                eprintln!(
+                    "[bridge] injected DobotBridge into the root movie ({} -> {} bytes)",
+                    bytes.len(),
+                    patched.len()
+                );
+                bridge.mark_injected(true);
+                patched
+            }
+            Err(reason) => {
+                eprintln!("[bridge] injection failed: {reason}; running the movie unmodified");
+                bytes
+            }
+        }
+    } else {
+        bytes
     };
 
     let parameters = decoded_flashvars(&session.flashvars);
@@ -75,6 +99,7 @@ pub async fn authenticate(
             page_url,
         },
         smoke_pool,
+        bridge,
     })
 }
 

@@ -10,12 +10,14 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use crate::authenticator::PreparedLaunch;
+use crate::bridge::Bridge;
 use crate::desktop_ui::DesktopUi;
 use crate::executor::GameExecutor;
+use crate::keyboard::{winit_input_to_ruffle_key_descriptor, winit_to_ruffle_text_control};
 use crate::navigator::GameNavigator;
 use winit::application::ApplicationHandler;
 use winit::dpi::{LogicalSize, PhysicalPosition};
-use winit::event::{ElementState, MouseButton, WindowEvent};
+use winit::event::{ElementState, Modifiers, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
 
@@ -35,10 +37,12 @@ pub async fn run_headed(
         script_timeout,
         quality,
         smoke_pool: launch.smoke_pool,
+        bridge: launch.bridge,
         executor: None,
         window: None,
         player: None,
         mouse_pos: PhysicalPosition::new(0.0, 0.0),
+        modifiers: Modifiers::default(),
         last_tick: Instant::now(),
         error: None,
         watchdog,
@@ -61,12 +65,14 @@ struct HeadedApp {
     window: Option<Arc<Window>>,
     player: Option<Arc<Mutex<Player>>>,
     mouse_pos: PhysicalPosition<f64>,
+    modifiers: Modifiers,
     last_tick: Instant,
     error: Option<Box<dyn std::error::Error>>,
     watchdog: UiWatchdog,
     script_timeout: u64,
     quality: StageQuality,
     smoke_pool: Option<u32>,
+    bridge: Bridge,
 }
 
 impl HeadedApp {
@@ -102,6 +108,7 @@ impl HeadedApp {
         }?;
 
         let network = self.network.take().ok_or("game session was not loaded")?;
+        let page_url = network.page_url.clone();
         let executor = GameExecutor::new();
         let navigator = GameNavigator::new(&executor, &network, self.smoke_pool)?;
         let player = PlayerBuilder::new()
@@ -109,7 +116,8 @@ impl HeadedApp {
             .with_audio(NullAudioBackend::new())
             .with_ui(DesktopUi::new())
             .with_navigator(navigator)
-            .with_page_url(Some(network.page_url))
+            .with_external_interface(Box::new(self.bridge.provider(Some(page_url.clone()))))
+            .with_page_url(Some(page_url))
             .with_viewport_dimensions(width, height, scale_factor)
             .with_autoplay(true)
             .with_max_execution_duration(Duration::from_secs(self.script_timeout))
@@ -118,6 +126,7 @@ impl HeadedApp {
             .build();
         self.executor = Some(executor);
 
+        self.bridge.spawn_pipe();
         window.request_redraw();
         self.window = Some(window);
         self.player = Some(player);
@@ -212,6 +221,35 @@ impl ApplicationHandler for HeadedApp {
                     player.handle_event(PlayerEvent::MouseLeave);
                 });
             }
+            WindowEvent::Focused(focused) => {
+                self.with_player("focus", |player| {
+                    player.handle_event(if focused {
+                        PlayerEvent::FocusGained
+                    } else {
+                        PlayerEvent::FocusLost
+                    });
+                });
+            }
+            WindowEvent::ModifiersChanged(modifiers) => self.modifiers = modifiers,
+            WindowEvent::KeyboardInput { event, .. } => {
+                let key = winit_input_to_ruffle_key_descriptor(&event);
+                let control = winit_to_ruffle_text_control(&event, self.modifiers);
+                self.with_player("keyboard", |player| match event.state {
+                    ElementState::Pressed => {
+                        player.handle_event(PlayerEvent::KeyDown { key });
+                        if let Some(code) = control {
+                            player.handle_event(PlayerEvent::TextControl { code });
+                        } else if let Some(text) = event.text {
+                            for codepoint in text.chars() {
+                                player.handle_event(PlayerEvent::TextInput { codepoint });
+                            }
+                        }
+                    }
+                    ElementState::Released => {
+                        player.handle_event(PlayerEvent::KeyUp { key });
+                    }
+                });
+            }
             _ => {}
         }
     }
@@ -235,11 +273,16 @@ impl ApplicationHandler for HeadedApp {
             let _guard = self.watchdog.enter("Flash tick");
             let mut player = player.lock().expect("player lock");
             player.tick(dt);
+            self.bridge.poll(&mut player);
             (player.time_til_next_frame(), player.needs_render())
         };
         if let Some(executor) = &mut self.executor {
             let _guard = self.watchdog.enter("network poll");
             executor.run();
+        }
+        if self.bridge.close_requested() {
+            event_loop.exit();
+            return;
         }
         if needs_render {
             if let Some(window) = &self.window {

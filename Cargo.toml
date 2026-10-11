@@ -8,12 +8,20 @@ async-channel = "2.5.0"
 async-task = "4.7.1"
 clap = { version = "4.6.7", features = ["derive"] }
 flate2 = "1"
+lzma-rs = "0.3.0"
 fontdb = "0.23"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "cookies"] }
+serde_json = "1"
 tokio = { version = "1.53.1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
 url = "2.5.8"
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Memory",
+    "Win32_System_Pipes",
+] }
 winit = "0.30.13"
 
 # ruffle
@@ -23,6 +31,7 @@ ruffle_render_wgpu = { git = "https://github.com/ruffle-rs/ruffle" }
 
 # xenomit
 xenomit_backpage = { path = "../xenomit-backpage" }
+xenomit-game-api = { path = "../xenomit-game-api" }
 md-5 = "0.11.0"
 
 # Use the sibling checkout while tracing the game startup event handoff.
