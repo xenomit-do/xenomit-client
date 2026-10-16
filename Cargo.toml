@@ -25,20 +25,14 @@ windows-sys = { version = "0.61", features = [
 winit = "0.30.13"
 
 # ruffle
-ruffle_core = { git = "https://github.com/ruffle-rs/ruffle", features = ["jpegxr"] }
-ruffle_render = { git = "https://github.com/ruffle-rs/ruffle" }
-ruffle_render_wgpu = { git = "https://github.com/ruffle-rs/ruffle" }
+ruffle_core = { git = "https://github.com/ruffle-rs/ruffle", tag = "v0.6.0", features = ["jpegxr"] }
+ruffle_render = { git = "https://github.com/ruffle-rs/ruffle", tag = "v0.6.0" }
+ruffle_render_wgpu = { git = "https://github.com/ruffle-rs/ruffle", tag = "v0.6.0" }
 
 # xenomit
-xenomit_backpage = { path = "../xenomit-backpage" }
-xenomit-game-api = { path = "../xenomit-game-api" }
+xenomit_backpage = { git = "https://github.com/xenomit-do/xenomit-backpage", tag = "v0.1.0" }
+xenomit-game-api = { git = "https://github.com/xenomit-do/xenomit-game-api", tag = "v0.1.0" }
 md-5 = "0.11.0"
-
-# Use the sibling checkout while tracing the game startup event handoff.
-[patch."https://github.com/ruffle-rs/ruffle"]
-ruffle_core = { path = "../ruffle/core" }
-ruffle_render = { path = "../ruffle/render" }
-ruffle_render_wgpu = { path = "../ruffle/render/wgpu" }
 
 # Flash decodes some 4-byte sequences to code points above U+10FFFF.
 # `ruffle_wstr` debug-asserts that this cannot happen, so a debug run panics
