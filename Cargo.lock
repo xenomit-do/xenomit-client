@@ -3431,6 +3431,7 @@ dependencies = [
 [[package]]
 name = "ruffle_core"
 version = "0.6.0"
+source = "git+https://github.com/ruffle-rs/ruffle?tag=v0.6.0#cac5c99ce4a17e606f4ee3090389bb878f852055"
 dependencies = [
  "async-channel",
  "bitflags 2.13.2",
@@ -3501,6 +3502,7 @@ dependencies = [
 [[package]]
 name = "ruffle_render"
 version = "0.6.0"
+source = "git+https://github.com/ruffle-rs/ruffle?tag=v0.6.0#cac5c99ce4a17e606f4ee3090389bb878f852055"
 dependencies = [
  "byteorder",
  "enum-map",
@@ -3530,6 +3532,7 @@ dependencies = [
 [[package]]
 name = "ruffle_render_wgpu"
 version = "0.6.0"
+source = "git+https://github.com/ruffle-rs/ruffle?tag=v0.6.0#cac5c99ce4a17e606f4ee3090389bb878f852055"
 dependencies = [
  "bytemuck",
  "enum-map",
@@ -5379,6 +5382,7 @@ checksum = "163b33ed8786455e2fa5d72f554057ce3f3182425434f756cd39c99839d88e23"
 [[package]]
 name = "xenomit-game-api"
 version = "0.1.0"
+source = "git+https://github.com/xenomit-do/xenomit-game-api?tag=v0.1.0#60c27a5c48fbae0817c2dc8d205fdffda61ea60d"
 dependencies = [
  "roxmltree",
  "serde",
@@ -5390,6 +5394,7 @@ dependencies = [
 [[package]]
 name = "xenomit_backpage"
 version = "0.1.0"
+source = "git+https://github.com/xenomit-do/xenomit-backpage?tag=v0.1.0#a7d1588f397cd41fd945cf90fa2c2c08f902ec2b"
 dependencies = [
  "base64 0.22.1",
  "flate2",
